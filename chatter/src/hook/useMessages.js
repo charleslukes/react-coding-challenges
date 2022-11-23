@@ -11,6 +11,20 @@ const socket = io(config.BOT_SERVER_ENDPOINT, {
 
 const botTypingEvent = "bot-typing";
 const botMessageEvent = "bot-message";
+const generateId = () => "id" + new Date().getTime();
+const messageTemplate = (msg, user, typing) => {
+  return {
+    message: {
+      user,
+      id: generateId(),
+      message: msg,
+    },
+    botTyping: typing,
+    nextMessage: {
+      user,
+    },
+  };
+};
 
 export function useMessages() {
   const [playSend] = useSound(config.SEND_AUDIO_URL);
@@ -19,50 +33,20 @@ export function useMessages() {
   const [userInput, setUserInput] = useState("");
   const [message, setMessage] = useState(null);
   const [messageList, setMessageList] = useState([
-    {
-      message: {
-        user: "bot",
-        id: "id" + new Date().getTime(),
-        message: INITIAL_BOTTY_MESSAGE,
-      },
-      botTyping: false,
-      nextMessage: {
-        user: "bot",
-      },
-    },
+    messageTemplate(INITIAL_BOTTY_MESSAGE, "bot", false),
   ]);
   const messageListElem = useRef(null);
+
 
   // listen to bot response
   const listenToSocketEvents = () => {
     socket.on(botTypingEvent, () => {
-      setMessage({
-        message: {
-          user: "bot",
-          id: "id" + new Date().getTime(),
-          message: null,
-        },
-        botTyping: true,
-        nextMessage: {
-          user: "bot",
-        },
-      });
+      setMessage(messageTemplate(null, "bot", true));
     });
 
     socket.on(botMessageEvent, (msg) => {
       playReceive();
-      setMessage({
-        message: {
-          user: "bot",
-          id: "id" + new Date().getTime(),
-          message: msg,
-        },
-        botTyping: false,
-        nextMessage: {
-          user: "bot",
-        },
-      });
-
+      setMessage(messageTemplate(msg, "bot", false));
       setLatestMessage("charles", msg);
     });
   };
@@ -80,17 +64,7 @@ export function useMessages() {
   const handleSendMessage = () => {
     socket.emit("user-message", userInput);
     playSend();
-    setMessage({
-      message: {
-        user: "me",
-        id: "id" + new Date().getTime(),
-        message: userInput,
-      },
-      botTyping: false,
-      nextMessage: {
-        user: "me",
-      },
-    });
+    setMessage(messageTemplate(userInput, "me", false));
     setLatestMessage("charles", userInput);
     setUserInput("");
   };
